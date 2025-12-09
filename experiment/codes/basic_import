@@ -7,13 +7,11 @@
 # With the following basic code we import the experimental data and visualize parts of it
 
 # basic imports
-import os
 import numpy as np
-import scipy as sp
 import matplotlib.pyplot as plt
 import py4DSTEM
 import hyperspy.api as hs
-import h5py
+
 
 #load the raw data and visualize it, 
 filepath = r"YOUR_PATH\4D-STEM data for wax\20210722_212158_data._binned2.hdf5"
