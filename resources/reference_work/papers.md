@@ -5,6 +5,7 @@
 ## Papers
 
 Denoising approach we plan to use: https://www.science.org/doi/10.1126/science.ads2688
+(A more general description of their deep-denoising is presented in https://ieeexplore.ieee.org/document/11119740)
 
 Geometric flow: https://www.nature.com/articles/s41524-024-01428-x
 
