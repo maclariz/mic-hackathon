@@ -45,7 +45,7 @@ class DataSet(torch.utils.data.Dataset):
         self.imgs=[]
         
         f = h5py.File(file_path, 'r')
-        self.imgs.append(f['Experiments/__unnamed__/data/'])
+        self.imgs.append(np.array(f['Experiments/__unnamed__/data/']))
 
     #Height and width
     def Rx(self):
