@@ -172,22 +172,6 @@ class DataSet(torch.utils.data.Dataset):
     def __getitem__(self,index):
         return self.getitem(index)
 
-    #Custom DataSet
-
-'''
-This module contains all utilities needed to load training data and the live diffraction pattern for denoising into pytorch 
-
-Functions will be added in due course
-
-All assumes that data is held in memory as numpy files currently
-
-If necessary, we could investigate modifying this to holding data as cupy arrays if there is a suitable GPU with enough memory to hold these
-'''
-
-#Importing libraries
-import torch
-import numpy as np
-import h5py
 
 #Custom dataset object
 class DataSet4(torch.utils.data.Dataset):
@@ -224,19 +208,6 @@ class DataSet4(torch.utils.data.Dataset):
         self.imgs=[]
         f = h5py.File(file_path, 'r')
         self.imgs.append(f['Experiments/__unnamed__/data/'])
-
-    #Height and width
-    def Rx(self):
-        '''
-        Size in real space in vertical direction
-        '''
-        return self.imgs[0].shape[0]
-
-    def Ry(self):
-        '''
-        Size in real space in horizontal direction
-        '''
-        return self.imgs[0].shape[1]
     
     def __len__(self):
         """
@@ -311,7 +282,7 @@ class DataSet4(torch.utils.data.Dataset):
         keepTL = np.where(np.logical_and(shifted_slicer[0]>=0,shifted_slicer[1]>=0))[0]
         shifted_slicer_1 = shifted_slicer[:,keepTL]
         # Only keep selections that are inside the bottom and right boundaries
-        keepBR = np.where(np.logical_and(shifted_slicer_1[0]<self.Rx(),shifted_slicer_1[1]<self.Ry()))[0]
+        keepBR = np.where(np.logical_and(shifted_slicer_1[0]<self.Rx,shifted_slicer_1[1]<self.Ry))[0]
         coord_list = (shifted_slicer_1[:,keepBR]).T
         
         return coord_list
@@ -343,21 +314,27 @@ class DataSet4(torch.utils.data.Dataset):
             self.bottom_exclude=0
             self.left_exclude=2
             self.right_exclude=2
+            self.Rx=self.imgs[0].shape[0]
+            self.Ry=self.imgs[0].shape[1]            
         elif samplershape == '3d' or '3s':
             self.top_exclude=1
             self.bottom_exclude=1
             self.left_exclude=1
             self.right_exclude=1
-        maxindex = (
-            (self.Ry()-self.left_exclude-self.right_exclude)*
-            (self.Rx()-self.top_exclude-self.bottom_exclude)
-        )
+        self.Rx=self.imgs[0].shape[0]
+        self.Ry=self.imgs[0].shape[1]
+        self.Rx_cut=self.imgs[0].shape[0]-self.top_exclude-self.bottom_exclude
+        self.Ry_cut=self.imgs[0].shape[1]-self.left_exclude-self.right_exclude 
+        
+
+        maxindex = self.Ry*self.Rx
+        
         assert index<maxindex, 'index out of range'
 
         self.samplershape=samplershape
         
-        Rx_pos=int(index/self.Ry())+self.top_exclude
-        Ry_pos=index%self.Ry()+self.left_exclude
+        Rx_pos=int(index/self.Rx_cut)+self.top_exclude
+        Ry_pos=index%self.Ry_cut+self.left_exclude
         print("x and y:", Rx_pos, Ry_pos)
         coord_list = self.selector(Rx_pos, Ry_pos, samplershape)
         item_output=torch.tensor(self.imgs[0][Rx_pos, Ry_pos],dtype = torch.float64)
