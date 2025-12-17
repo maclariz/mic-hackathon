@@ -337,11 +337,11 @@ class DataSet4(torch.utils.data.Dataset):
         Ry_pos=index%self.Ry_cut+self.left_exclude
         print("x and y:", Rx_pos, Ry_pos)
         coord_list = self.selector(Rx_pos, Ry_pos, samplershape)
-        item_output=torch.tensor(self.imgs[0][Rx_pos, Ry_pos],dtype = torch.float64)
+        item_output=torch.tensor(self.imgs[0][Rx_pos, Ry_pos],dtype = torch.float16)/300
         item_input=[]
         for coords in coord_list:
             item_input.append(self.imgs[0][coords[0],coords[1]])
-        item_input=torch.tensor(item_input,dtype = torch.float64)
+        item_input=torch.tensor(item_input,dtype = torch.float16)/300
 
         if item_input.shape[0]!=self.n:
             ValueError("Incorrect number of channels. This is probably because, somehow," \
