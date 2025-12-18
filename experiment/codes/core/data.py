@@ -149,7 +149,7 @@ class STEMDataSet(torch.utils.data.Dataset):
     def index_to_RxRy(self, index: int):
         Rx_pos = int(index / self.Ry_cut) + self.top_exclude
         Ry_pos = index % self.Ry_cut + self.left_exclude
-        print(f"Scannig location (x,y): {Rx_pos, Ry_pos} for index {index}")
+        # print(f"Scannig location (x,y): {Rx_pos, Ry_pos} for index {index}")
         return Rx_pos, Ry_pos
 
     def getitem(self, index):

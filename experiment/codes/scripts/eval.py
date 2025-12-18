@@ -1,63 +1,35 @@
 import argparse
+import sys
 from pathlib import Path
 
-import core.models as models
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import torch.nn as nn
-from core.data import STEMDataSet as DataSet
 from torch.amp import autocast
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # .../experiment/codes
+
+import core.models as models
+from core.data import STEMDataSet as DataSet
 from utils.opts import get_configuration
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 use_amp = (device == "cuda")
 
-# definition for loading model from a pretrained network file
-def load_model(model_path, Fast=False, parallel=False, pretrained=True, old=True, load_opt=False,
-            mf2f=False):
-    if not Fast:
-        # Explicitly disable weights_only to allow loading checkpoints saved with argparse.Namespace
-        ckpt = torch.load(model_path, map_location="cpu", weights_only=False)
-        args = argparse.Namespace(**{**vars(ckpt["args"])})
-        # ignore this
-        if old:
-            vars(args)['blind_noise'] = False
-
-        model = models.build_model(args)
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-    else:
-        model = models.FastDVDnet(mf2f=mf2f)
-        ckpt = None
-
-    if load_opt and not Fast:
-        for o, state in zip([optimizer], ckpt.get("optimizer", []), strict=False):
-            o.load_state_dict(state)
-
-    if pretrained:
-        if Fast:
-            state_dict = torch.load(model_path, weights_only=False, map_location="cpu")
-        else:
-            state_dict = ckpt["model"][0]
-        own_state = model.state_dict()
-
-        for name, param in state_dict.items():
-            if parallel:
-                name = name[7:]
-            if Fast and not mf2f:
-                name = name.split('.', 1)[1]
-            if name not in own_state:
-                print("not matching: ", name)
-                continue
-            if isinstance(param, nn.Parameter):
-                # backwards compatibility for serialized parameters
-                param = param.data
-            own_state[name].copy_(param)
-
-    if not Fast:
-        return model, optimizer, args
-    else:
-        return model
+def load_model(cfg, config_path: Path):
+    args = argparse.Namespace(
+        model=cfg.model.name,
+        channels=cfg.model.channels,
+        out_channels=cfg.model.out_channels,
+        bias=cfg.model.bias,
+        normal=cfg.model.normal,
+        blind_noise=cfg.model.blind_noise,
+    )
+    model = models.build_model(args).to(device)
+    model_path = (config_path.parent / cfg.pre_train_path).resolve()
+    ckpt = torch.load(model_path, map_location="cpu", weights_only=False)
+    model.load_state_dict(ckpt['model'])
+    return model
 
 def plot_one(gt_img, pred_img, output_dir, name="run_pretrained.png"):
     # gt_img: (H,W) numpy
@@ -85,8 +57,6 @@ def plot_one(gt_img, pred_img, output_dir, name="run_pretrained.png"):
 
 def main(cfg, config_path: Path):
 
-    codes_path = config_path.parent.parent.resolve() # returns location of codes directory
-
     filepath = config_path.parent / cfg.dataset.data_dir / cfg.dataset.file
     ds = DataSet(filepath, samplershape=cfg.dataset.samplershape)
     _, y0 = ds[0]
@@ -95,9 +65,7 @@ def main(cfg, config_path: Path):
     dl = torch.utils.data.DataLoader(ds, batch_size=cfg.validate.batch_size,
                                     shuffle=False, num_workers=0)
     # example = 0
-    model_path = codes_path / "pretrained" / "fluoro_micro.pt"
-    model, _, _ = load_model(model_path, parallel=True,
-                                        pretrained=True, old=True, load_opt=False)
+    model = load_model(cfg, config_path)
     model = model.to(device).eval()
 
     total_eval = cfg.validate.batch_size*cfg.validate.max_batch
